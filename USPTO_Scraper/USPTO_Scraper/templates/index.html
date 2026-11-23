@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>USPTO Scraper | Local workspace</title>
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #1c293a;
+      background: #f5f7fa;
+      font-synthesis: none;
+      --navy: #182d49;
+      --blue: #315fbe;
+      --muted: #67758a;
+      --line: #e4e9f0;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-size: 14px; line-height: 1.45; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid #8cb5ff; outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    .topbar { background: #fff; border-bottom: 1px solid var(--line); }
+    .topbar-inner { max-width: 1200px; min-height: 66px; margin: auto; padding: 0 30px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--navy); font-size: 15px; font-weight: 750; letter-spacing: -.025em; }
+    .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; color: #fff; background: var(--navy); border-radius: 9px; }
+    .brand-mark svg { width: 19px; height: 19px; }
+    .topbar-note { display: flex; align-items: center; gap: 7px; color: #66758a; font-size: 12px; font-weight: 600; }
+    .topbar-note svg { width: 15px; height: 15px; color: #7b8ba1; }
+    main { max-width: 1200px; margin: auto; padding: 35px 30px 40px; }
+    .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .eyebrow { margin: 0 0 7px; color: #57739e; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; color: var(--navy); font-size: clamp(24px, 3vw, 30px); line-height: 1.15; letter-spacing: -.045em; }
+    .subtitle { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+    .button { min-height: 40px; border: 1px solid transparent; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 15px; font-weight: 700; font-size: 12px; line-height: 1.25; white-space: nowrap; transition: background-color .15s, border-color .15s; }
+    .button svg { flex: none; width: 16px; height: 16px; }
+    .button-primary { color: #fff; background: #315fbe; }
+    .button-primary:hover:not(:disabled) { background: #254fa6; }
+    .button-outline { color: #263c5a; background: #fff; border-color: #d9e1eb; }
+    .button-outline:hover:not(:disabled) { background: #f7f9fc; border-color: #becbdb; }
+    .button-stop { color: #a34242; background: #fff; border-color: #ead1d1; }
+    .button-stop:hover:not(:disabled) { background: #fff5f5; }
+    .button:disabled { color: #9aa6b6; background: #f2f4f7; border-color: #e9edf2; }
+    .workspace { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+    .panel { min-width: 0; background: #fff; border: 1px solid #e1e7ef; border-radius: 10px; box-shadow: 0 2px 8px rgba(24, 45, 73, .035); }
+    .setup, .overview { padding: 22px; }
+    .panel-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .section-kicker { margin: 0 0 5px; color: #8290a2; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    h2 { margin: 0; color: var(--navy); font-size: 16px; letter-spacing: -.025em; line-height: 1.3; }
+    .section-description { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+    .field-label, legend { display: block; padding: 0; color: #34455c; font-size: 12px; font-weight: 750; }
+    .upload-form { margin-top: 21px; }
+    .upload-area { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 124px; margin-top: 8px; padding: 15px; text-align: center; border: 1px dashed #afc3df; border-radius: 8px; background: #f8faff; cursor: pointer; }
+    .upload-area:hover { border-color: #668dc8; background: #f3f7ff; }
+    .upload-area:focus-within { outline: 3px solid #8cb5ff; outline-offset: 2px; }
+    .upload-area.is-disabled { opacity: .65; cursor: not-allowed; }
+    .file-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+    .upload-icon { display: grid; place-items: center; width: 32px; height: 32px; margin-bottom: 3px; border-radius: 8px; background: #e8f0ff; color: #416cb4; }
+    .upload-icon svg { width: 17px; height: 17px; }
+    .upload-title { color: #365d9e; font-size: 12px; font-weight: 750; overflow-wrap: anywhere; }
+    .upload-hint { color: #8491a2; font-size: 11px; }
+    .upload-button { width: 100%; margin-top: 9px; }
+    .loaded-file { margin: 11px 0 0; color: #718096; font-size: 11px; overflow-wrap: anywhere; }
+    .loaded-file strong { color: #34455c; font-weight: 700; }
+    .divider { height: 1px; margin: 20px 0; background: #edf0f4; }
+    fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
+    .mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .mode-option { min-width: 0; position: relative; cursor: pointer; }
+    .mode-option input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .mode-option span { min-height: 60px; display: flex; flex-direction: column; justify-content: center; padding: 9px 11px; border: 1px solid #e1e7ef; border-radius: 7px; color: #42536b; background: #fff; }
+    .mode-option strong { font-size: 12px; }
+    .mode-option small { margin-top: 2px; color: #8491a2; font-size: 10px; }
+    .mode-option input:checked + span { color: #2f5ba7; background: #f3f7ff; border-color: #84a5dc; box-shadow: inset 0 0 0 1px #84a5dc; }
+    .mode-option input:focus-visible + span { outline: 3px solid #8cb5ff; outline-offset: 2px; }
+    fieldset:disabled .mode-option { opacity: .65; cursor: not-allowed; }
+    .vpn-setting { margin-top: 14px; }
+    .vpn-option { display: flex; align-items: center; gap: 8px; color: #34455c; font-size: 12px; font-weight: 750; }
+    .vpn-option input { width: 15px; height: 15px; margin: 0; accent-color: var(--blue); }
+    .vpn-option input:disabled { cursor: not-allowed; }
+    .vpn-option input:disabled + span { color: #8491a2; }
+    .vpn-help { margin: 5px 0 0 23px; color: #8491a2; font-size: 11px; }
+    .run-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+    .run-actions .button { white-space: normal; }
+    #clear-button { grid-column: 1 / -1; }
+    .feedback { margin: 12px 0 0; padding: 9px 10px; border-radius: 6px; color: #245b47; background: #edf8f1; font-size: 12px; overflow-wrap: anywhere; }
+    .feedback.error { color: #9b3333; background: #fff1f1; }
+    .status-pill { display: inline-flex; flex: none; align-items: center; gap: 6px; padding: 5px 9px; color: #63758a; background: #f2f5f8; border-radius: 20px; font-size: 10px; font-weight: 750; white-space: nowrap; }
+    .status-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #9aa8b8; }
+    .status-pill[data-state="running"] { color: #237653; background: #eaf7ef; }
+    .status-pill[data-state="running"]::before { background: #37a370; }
+    .status-pill[data-state="stopping"] { color: #936516; background: #fff6e5; }
+    .status-pill[data-state="stopping"]::before { background: #d3972d; }
+    .status-pill[data-state="offline"] { color: #a34242; background: #fff0f0; }
+    .status-pill[data-state="offline"]::before { background: #d36b6b; }
+    .progress-block { margin-top: 28px; }
+    .progress-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .progress-label { color: #3d4e65; font-size: 12px; font-weight: 700; }
+    .progress-percent { color: var(--navy); font-size: 22px; font-weight: 750; letter-spacing: -.04em; }
+    progress { width: 100%; height: 8px; display: block; margin-top: 9px; border: 0; border-radius: 10px; overflow: hidden; background: #eaf0f7; accent-color: #3d70cc; }
+    progress::-webkit-progress-bar { background: #eaf0f7; border-radius: 10px; }
+    progress::-webkit-progress-value { background: #3d70cc; border-radius: 10px; }
+    progress::-moz-progress-bar { background: #3d70cc; border-radius: 10px; }
+    .progress-bottom { display: flex; justify-content: space-between; gap: 12px; margin-top: 9px; color: #7a889a; font-size: 11px; }
+    .job-message { min-height: 18px; margin: 16px 0 0; color: #687a90; font-size: 12px; overflow-wrap: anywhere; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 23px; }
+    .metric { min-width: 0; padding: 13px 12px; border: 1px solid #edf0f5; border-radius: 7px; background: #fafbfd; }
+    .metric-label { display: flex; align-items: center; gap: 6px; color: #718096; font-size: 10px; font-weight: 700; white-space: nowrap; }
+    .metric-label::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--dot, #8c9bae); }
+    .metric-value { margin-top: 5px; color: #253a55; font-size: 22px; font-weight: 750; letter-spacing: -.04em; line-height: 1.15; overflow-wrap: anywhere; }
+    .overview-note { display: flex; gap: 9px; margin-top: 20px; padding: 12px; color: #66788f; background: #f5f8fc; border-radius: 7px; font-size: 11px; line-height: 1.55; }
+    .overview-note svg { flex: none; width: 15px; height: 15px; margin-top: 1px; color: #7891b2; }
+    .activity { margin-top: 18px; }
+    .activity-heading { padding: 19px 22px; border-bottom: 1px solid #edf0f4; }
+    .activity-caption { align-self: center; color: #8a98a9; font-size: 11px; white-space: nowrap; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 10px 22px; color: #8a98a9; background: #fafbfd; font-size: 10px; font-weight: 750; letter-spacing: .055em; text-transform: uppercase; white-space: nowrap; }
+    td { max-width: 260px; padding: 12px 22px; border-top: 1px solid #f0f3f6; color: #4b5c72; font-size: 12px; vertical-align: top; overflow-wrap: anywhere; }
+    tbody tr:first-child td { border-top: 0; }
+    .cell-main { color: #2e4058; font-weight: 650; }
+    .cell-sub { margin-top: 2px; color: #8a98a9; font-size: 11px; }
+    .result { display: inline-block; padding: 4px 7px; border-radius: 5px; color: #64758a; background: #f1f4f7; font-size: 10px; font-weight: 750; }
+    .result.matched { color: #237653; background: #eaf7ef; }
+    .result.no-gmail { color: #826522; background: #fbf5e6; }
+    .result.error, .result.invalid { color: #a34242; background: #fff0f0; }
+    .empty-state { padding: 29px 22px 32px; text-align: center; }
+    .empty-icon { display: grid; place-items: center; width: 36px; height: 36px; margin: 0 auto 9px; color: #91a2b8; background: #f3f6fa; border-radius: 9px; }
+    .empty-icon svg { width: 18px; height: 18px; }
+    .empty-state strong { display: block; color: #53647a; font-size: 12px; }
+    .empty-state p { margin: 4px 0 0; color: #91a0b0; font-size: 11px; }
+    .footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 17px; color: #8996a7; font-size: 11px; }
+    .footer p { margin: 0; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    @media (max-width: 760px) {
+      .topbar-inner { padding: 0 18px; }
+      main { padding: 27px 18px 30px; }
+      .workspace { grid-template-columns: 1fr; }
+      .page-heading { align-items: flex-start; }
+      .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    @media (max-width: 480px) {
+      .topbar-note { font-size: 0; }
+      .topbar-note svg { width: 17px; height: 17px; }
+      .page-heading { flex-direction: column; gap: 15px; }
+      .page-heading .button { width: 100%; }
+      .setup, .overview { padding: 18px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .activity-heading { padding: 17px 18px; }
+      th, td { padding-left: 18px; padding-right: 18px; }
+      .footer { flex-direction: column; gap: 4px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .button { transition: none; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M6 20V9l6-5 6 5v11M9 20v-6h6v6M10 10h4"/></svg></span>
+        <span>USPTO Scraper</span>
+      </div>
+      <div class="topbar-note"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 15v2"/></svg><span>Local workspace</span></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">Trademark research / Workspace</p>
+        <h1>Spreadsheet scraper</h1>
+        <p class="subtitle">Find Gmail contacts for your USPTO records, one spreadsheet at a time.</p>
+      </div>
+      <button class="button button-outline" id="export-button" type="button" disabled>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        <span id="export-label">Download Excel</span>
+      </button>
+    </div>
+
+    <noscript><p class="feedback error">JavaScript is required to upload a workbook and control the scraper.</p></noscript>
+
+    <div class="workspace">
+      <section class="panel setup" aria-labelledby="setup-title">
+        <div class="panel-heading">
+          <div><p class="section-kicker">01 / Setup</p><h2 id="setup-title">Input &amp; run</h2><p class="section-description">Choose a workbook and browser mode. Each serial is opened, scraped, and closed one at a time.</p></div>
+        </div>
+        <form class="upload-form" id="upload-form">
+          <span class="field-label" id="file-label">Excel workbook</span>
+          <label class="upload-area is-disabled" id="upload-area">
+            <input class="file-input" id="file-input" name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-labelledby="file-label file-choice" aria-describedby="file-help" disabled>
+            <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m-4 4 4-4 4 4M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
+            <span class="upload-title" id="file-choice">Choose an .xlsx file</span>
+            <span class="upload-hint" id="file-help">Name, Contact, Email, Mark, Serials</span>
+          </label>
+          <button class="button button-outline upload-button" id="upload-button" type="submit" disabled>Upload workbook</button>
+          <p class="loaded-file">Loaded: <strong id="loaded-file">No workbook yet</strong></p>
+        </form>
+        <div class="divider"></div>
+        <fieldset id="mode-fieldset" disabled>
+          <legend>Chrome mode</legend>
+          <div class="mode-options">
+            <label class="mode-option"><input type="radio" name="chrome-mode" value="headless" checked><span><strong>Headless</strong><small>Run in background</small></span></label>
+            <label class="mode-option"><input type="radio" name="chrome-mode" value="visible"><span><strong>Visible</strong><small>Show Chrome window</small></span></label>
+          </div>
+        </fieldset>
+        <div class="vpn-setting">
+          <label class="vpn-option" for="vpn-input"><input id="vpn-input" type="checkbox" aria-describedby="vpn-help" checked disabled><span>Use CyberGhost (United States)</span></label>
+          <p class="vpn-help" id="vpn-help">Connects the CyberGhost Chrome extension in a separate Chromium profile and may not eliminate 403 errors. Uncheck to run without integrated CyberGhost.</p>
+        </div>
+        <div class="run-actions">
+          <button class="button button-primary" id="start-button" type="button" disabled>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 5 11 7-11 7V5Z"/></svg><span id="start-label">Start scraping</span>
+          </button>
+          <button class="button button-stop" id="stop-button" type="button" disabled>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1"/></svg><span id="stop-label">Stop</span>
+          </button>
+          <button class="button button-stop" id="clear-button" type="button" disabled>Clear saved data</button>
+        </div>
+        <p class="feedback" id="feedback" role="status" aria-live="polite" hidden></p>
+        <p class="feedback error" id="worker-feedback" role="status" aria-live="polite" hidden></p>
+      </section>
+
+      <section class="panel overview" aria-labelledby="overview-title">
+        <div class="panel-heading">
+          <div><p class="section-kicker">02 / Progress</p><h2 id="overview-title">Processing overview</h2><p class="section-description">Your current workbook at a glance.</p></div>
+          <span class="status-pill" id="status-pill" data-state="offline">Connecting</span>
+        </div>
+        <div class="progress-block">
+          <div class="progress-top"><span class="progress-label">Overall progress</span><span class="progress-percent" id="progress-percent">0%</span></div>
+          <label class="sr-only" for="progress">Rows processed</label>
+          <progress id="progress" value="0" max="100" aria-valuetext="0 of 0 rows processed">0%</progress>
+          <div class="progress-bottom"><span id="progress-count">0 of 0 rows processed</span><span id="pending-count">0 pending</span></div>
+          <p class="job-message" id="job-message" aria-live="polite">Connecting to the local scraper…</p>
+        </div>
+        <div class="metrics" aria-label="Results summary">
+          <div class="metric"><div class="metric-label" style="--dot:#47a977">Matched</div><div class="metric-value" id="matched-count">0</div></div>
+          <div class="metric"><div class="metric-label" style="--dot:#d1a84e">No Gmail</div><div class="metric-value" id="no-gmail-count">0</div></div>
+          <div class="metric"><div class="metric-label" style="--dot:#d97a79">Errors</div><div class="metric-value" id="error-count">0</div></div>
+          <div class="metric"><div class="metric-label" style="--dot:#9aa8b8">Invalid</div><div class="metric-value" id="invalid-count">0</div></div>
+        </div>
+        <div class="overview-note">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>
+          <span>Each processed record is exported. The email column shows the first Gmail address or “No Gmail”; the input Status column is omitted.</span>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel activity" aria-labelledby="activity-title">
+      <div class="panel-heading activity-heading">
+        <div><p class="section-kicker">03 / Activity</p><h2 id="activity-title">Recent activity</h2></div>
+        <span class="activity-caption" id="activity-caption">Updates will appear here</span>
+      </div>
+      <div class="empty-state" id="activity-empty">
+        <span class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg></span>
+        <strong>No activity yet</strong><p>Processed records will show up here.</p>
+      </div>
+      <div class="table-wrap" id="activity-table-wrap" hidden>
+        <table>
+          <caption class="sr-only">Recent processed records</caption>
+          <thead><tr><th scope="col">Row / serial</th><th scope="col">Name</th><th scope="col">Phone</th><th scope="col">Email</th><th scope="col">Result</th><th scope="col">Details</th></tr></thead>
+          <tbody id="activity-body"></tbody>
+        </table>
+      </div>
+    </section>
+    <footer class="footer">
+      <p>Progress saves automatically. Reupload the same input to restore it.</p>
+      <p>Stop finishes the current case. Requests are rate limited for reliability.</p>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var csrfToken = {{ csrf_token | tojson }};
+      var $ = function (id) { return document.getElementById(id); };
+      var fileInput = $('file-input');
+      var uploadForm = $('upload-form');
+      var uploadButton = $('upload-button');
+      var startButton = $('start-button');
+      var stopButton = $('stop-button');
+      var clearButton = $('clear-button');
+      var exportButton = $('export-button');
+      var modeFieldset = $('mode-fieldset');
+      var modeInputs = document.querySelectorAll('input[name="chrome-mode"]');
+      var vpnInput = $('vpn-input');
+      var currentStatus = null;
+      var connected = false;
+      var statusAttempted = false;
+      var busy = false;
+      var busyAction = '';
+      var downloading = false;
+      var modeTouched = false;
+      var statusSequence = 0;
+      var activitySnapshot = null;
+      var numberFormat = new Intl.NumberFormat();
+
+      function setText(element, value) {
+        if (element.textContent !== value) element.textContent = value;
+      }
+
+      function count(value) {
+        var number = Number(value);
+        return Number.isFinite(number) && number > 0 ? Math.floor(number) : 0;
+      }
+
+      function display(value) {
+        return (typeof value === 'string' && value.trim()) || typeof value === 'number' ? String(value) : '—';
+      }
+
+      function selectedFile() {
+        return fileInput.files && fileInput.files.length ? fileInput.files[0] : null;
+      }
+
+      function validFile(file) {
+        return !!file && /\.xlsx$/i.test(file.name);
+      }
+
+      function showFeedback(message, isError) {
+        var feedback = $('feedback');
+        feedback.classList.toggle('error', !!isError);
+        setText(feedback, message);
+        feedback.hidden = !message;
+      }
+
+      function renderControls() {
+        var job = currentStatus && currentStatus.job;
+        var running = !!(currentStatus && currentStatus.running);
+        var stopping = !!(currentStatus && currentStatus.stopping);
+        var canConfigure = connected && !busy && !downloading && !running && !stopping;
+        fileInput.disabled = !canConfigure;
+        $('upload-area').classList.toggle('is-disabled', fileInput.disabled);
+        uploadButton.disabled = !canConfigure || !validFile(selectedFile());
+        modeFieldset.disabled = !canConfigure;
+        vpnInput.disabled = !canConfigure;
+        var finished = job && count(job.pending) === 0 && count(job.errors) === 0;
+        startButton.disabled = !canConfigure || !job || finished;
+        stopButton.disabled = !connected || busy || !running || stopping;
+        clearButton.disabled = !canConfigure || !job;
+        exportButton.disabled = !connected || busy || !job || downloading;
+        setText(uploadButton, busyAction === '/api/upload' ? 'Uploading…' : 'Upload workbook');
+        setText($('export-label'), downloading ? 'Preparing Excel…' : 'Download Excel');
+        setText($('stop-label'), stopping ? 'Stopping…' : (busyAction === '/api/stop' ? 'Requesting…' : 'Stop'));
+        var startLabel = 'Start scraping';
+        if (busyAction === '/api/start') startLabel = 'Starting…';
+        else if (stopping) startLabel = 'Stopping…';
+        else if (running) startLabel = 'Running…';
+        else if (finished) startLabel = 'Completed';
+        else if (job && (count(job.matched) || count(job.no_gmail) || count(job.errors))) startLabel = 'Resume / retry';
+        setText($('start-label'), startLabel);
+      }
+
+      function makeCell(main, sub) {
+        var cell = document.createElement('td');
+        var primary = document.createElement('div');
+        primary.className = 'cell-main';
+        primary.textContent = main;
+        cell.appendChild(primary);
+        if (sub) {
+          var secondary = document.createElement('div');
+          secondary.className = 'cell-sub';
+          secondary.textContent = sub;
+          cell.appendChild(secondary);
+        }
+        return cell;
+      }
+
+      function renderActivity(recent) {
+        var snapshot = JSON.stringify(recent);
+        if (snapshot === activitySnapshot) return;
+        activitySnapshot = snapshot;
+        var body = $('activity-body');
+        while (body.firstChild) body.removeChild(body.firstChild);
+        var fragment = document.createDocumentFragment();
+        recent.forEach(function (entry) {
+          entry = entry && typeof entry === 'object' ? entry : {};
+          var row = document.createElement('tr');
+          row.appendChild(makeCell('Row ' + display(entry.row), 'Serial: ' + display(entry.serial)));
+          row.appendChild(makeCell(display(entry.name)));
+          row.appendChild(makeCell(display(entry.phone)));
+          row.appendChild(makeCell(entry.status === 'no_gmail' ? 'No Gmail' : display(entry.email)));
+          var statusCell = document.createElement('td');
+          var badge = document.createElement('span');
+          var rawStatus = display(entry.status);
+          var key = rawStatus.toLowerCase().replace(/[\s-]+/g, '_');
+          var labels = { matched: 'Matched', match: 'Matched', no_gmail: 'No Gmail', error: 'Error', invalid: 'Invalid' };
+          var classes = { matched: 'matched', match: 'matched', no_gmail: 'no-gmail', error: 'error', invalid: 'invalid' };
+          badge.className = 'result' + (classes[key] ? ' ' + classes[key] : '');
+          badge.textContent = labels[key] || rawStatus;
+          statusCell.appendChild(badge);
+          row.appendChild(statusCell);
+          row.appendChild(makeCell(display(entry.error)));
+          fragment.appendChild(row);
+        });
+        body.appendChild(fragment);
+        $('activity-empty').hidden = recent.length > 0;
+        $('activity-table-wrap').hidden = recent.length === 0;
+        setText($('activity-caption'), recent.length ? numberFormat.format(recent.length) + ' recent ' + (recent.length === 1 ? 'record' : 'records') : 'Updates will appear here');
+      }
+
+      function renderStatus() {
+        var data = currentStatus || {};
+        var job = data.job || null;
+        var running = !!data.running;
+        var stopping = !!data.stopping;
+        var total = count(job && job.total);
+        var processed = count(job && job.processed);
+        var pending = count(job && job.pending);
+        var percent = total ? Math.min(100, Math.round(processed / total * 100)) : 0;
+        var progressText = numberFormat.format(processed) + ' of ' + numberFormat.format(total) + ' rows processed';
+        var state = 'idle';
+        var statusLabel = job ? 'Ready' : 'Waiting for input';
+        if (!connected) { state = 'offline'; statusLabel = currentStatus ? 'Reconnecting' : (statusAttempted ? 'Offline' : 'Connecting'); }
+        else if (stopping) { state = 'stopping'; statusLabel = 'Stopping'; }
+        else if (running) { state = 'running'; statusLabel = 'Running'; }
+        else if (job && total > 0 && pending === 0 && count(job.errors) === 0) { statusLabel = 'Finished'; }
+        var pill = $('status-pill');
+        pill.dataset.state = state;
+        setText(pill, statusLabel);
+        setText($('loaded-file'), job ? display(job.filename) : 'No workbook yet');
+        setText($('progress-percent'), percent + '%');
+        $('progress').value = percent;
+        $('progress').setAttribute('aria-valuetext', progressText);
+        setText($('progress-count'), progressText);
+        setText($('pending-count'), numberFormat.format(pending) + ' pending');
+        setText($('matched-count'), numberFormat.format(count(job && job.matched)));
+        setText($('no-gmail-count'), numberFormat.format(count(job && job.no_gmail)));
+        setText($('error-count'), numberFormat.format(count(job && job.errors)));
+        setText($('invalid-count'), numberFormat.format(count(job && job.invalid)));
+        var message = !connected ? (statusAttempted ? 'Unable to reach the local scraper. Reconnecting automatically…' : 'Connecting to the local scraper…') :
+          (typeof data.message === 'string' && data.message.trim() ? data.message : (job ? 'Progress is saved automatically.' : 'Upload a workbook to get started.'));
+        setText($('job-message'), message);
+        var workerFeedback = $('worker-feedback');
+        var warning = '';
+        if (connected && running && message.includes('Retrying in')) warning = message;
+        else if (connected && !running && message.startsWith('Scraper stopped:')) warning = message;
+        else if (connected && !running && job && count(job.errors)) {
+          var recentError = (Array.isArray(data.recent) ? data.recent : []).find(function (entry) { return entry.status === 'error'; });
+          warning = recentError && recentError.error ? recentError.error : count(job.errors) + ' records need another attempt.';
+          warning += ' Click Resume / retry when ready.';
+        }
+        setText(workerFeedback, warning);
+        workerFeedback.hidden = !warning;
+        if (connected && typeof data.headless === 'boolean' && (!modeTouched || running || stopping)) {
+          modeInputs[0].checked = data.headless;
+          modeInputs[1].checked = !data.headless;
+          if (running || stopping) modeTouched = false;
+        }
+        if (connected && (running || stopping) && typeof data.vpn === 'boolean') {
+          vpnInput.checked = data.vpn;
+        }
+        renderActivity(Array.isArray(data.recent) ? data.recent : []);
+        renderControls();
+      }
+
+      async function refreshStatus() {
+        var sequence = ++statusSequence;
+        var controller = new AbortController();
+        var timeout = window.setTimeout(function () { controller.abort(); }, 10000);
+        try {
+          var response = await fetch('/api/status', { cache: 'no-store', signal: controller.signal, headers: { 'Accept': 'application/json' } });
+          if (!response.ok) throw new Error('Status unavailable');
+          var data = await response.json();
+          if (!data || typeof data !== 'object' || typeof data.running !== 'boolean' || typeof data.stopping !== 'boolean' || !('job' in data)) throw new Error('Invalid status');
+          if (sequence !== statusSequence) return;
+          currentStatus = data;
+          connected = true;
+          statusAttempted = true;
+        } catch (error) {
+          if (sequence !== statusSequence) return;
+          connected = false;
+          statusAttempted = true;
+        } finally {
+          window.clearTimeout(timeout);
+          if (sequence === statusSequence) renderStatus();
+        }
+      }
+
+      async function poll() {
+        if (!busy) await refreshStatus();
+        window.setTimeout(poll, 1500);
+      }
+
+      async function responseError(response) {
+        try {
+          var body = await response.json();
+          if (body && typeof body.error === 'string' && body.error.trim()) return body.error;
+        } catch (error) { /* Fall back to the HTTP status. */ }
+        return 'Request failed (' + response.status + '). Please try again.';
+      }
+
+      function errorMessage(error) {
+        return error && error.name === 'TypeError' ? 'Could not reach the local scraper. Please try again.' :
+          (error && error.message ? error.message : 'Something went wrong. Please try again.');
+      }
+
+      async function post(url, body, json) {
+        var headers = { 'Accept': 'application/json', 'X-CSRF-Token': String(csrfToken) };
+        if (json) headers['Content-Type'] = 'application/json';
+        var response = await fetch(url, { method: 'POST', headers: headers, body: body });
+        if (!response.ok) throw new Error(await responseError(response));
+      }
+
+      async function runAction(url, body, json, successMessage, onSuccess) {
+        if (busy || !connected) return;
+        busy = true;
+        busyAction = url;
+        showFeedback('', false);
+        renderControls();
+        try {
+          await post(url, body, json);
+          if (onSuccess) onSuccess();
+          showFeedback(successMessage, false);
+        } catch (error) {
+          showFeedback(errorMessage(error), true);
+        } finally {
+          await refreshStatus();
+          busy = false;
+          busyAction = '';
+          renderControls();
+        }
+      }
+
+      fileInput.addEventListener('change', function () {
+        var file = selectedFile();
+        setText($('file-choice'), file ? file.name : 'Choose an .xlsx file');
+        showFeedback(file && !validFile(file) ? 'Choose an .xlsx workbook.' : '', !!file && !validFile(file));
+        renderControls();
+      });
+
+      uploadForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var file = selectedFile();
+        if (!validFile(file) || uploadButton.disabled) return;
+        var form = new FormData();
+        form.append('file', file);
+        runAction('/api/upload', form, false, 'Workbook uploaded.', function () {
+          fileInput.value = '';
+          setText($('file-choice'), 'Choose an .xlsx file');
+        });
+      });
+
+      Array.prototype.forEach.call(modeInputs, function (input) {
+        input.addEventListener('change', function () { modeTouched = true; });
+      });
+
+      startButton.addEventListener('click', function () {
+        if (startButton.disabled) return;
+        var headless = modeInputs[0].checked;
+        runAction('/api/start', JSON.stringify({ headless: headless, vpn: vpnInput.checked }), true, '');
+      });
+
+      stopButton.addEventListener('click', function () {
+        if (stopButton.disabled) return;
+        runAction('/api/stop', undefined, false, 'Stop requested. The current case will finish first.');
+      });
+
+      clearButton.addEventListener('click', function () {
+        if (clearButton.disabled) return;
+        if (!window.confirm('Permanently delete all saved uploaded workbooks and their progress? Your original Excel files will remain untouched.')) return;
+        runAction('/api/clear', undefined, false, 'All saved workbooks and their progress have been cleared. Original Excel files were not affected.', function () {
+          fileInput.value = '';
+          setText($('file-choice'), 'Choose an .xlsx file');
+        });
+      });
+
+      function exportFilename(response) {
+        var disposition = response.headers.get('Content-Disposition') || '';
+        var encoded = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(disposition);
+        if (encoded) {
+          try { return decodeURIComponent(encoded[1].trim()); } catch (error) { /* Use the fallback filename. */ }
+        }
+        var plain = /filename\s*=\s*(?:"([^"]+)"|([^;]+))/i.exec(disposition);
+        return plain ? (plain[1] || plain[2].trim()) : 'uspto-results.xlsx';
+      }
+
+      exportButton.addEventListener('click', async function () {
+        if (exportButton.disabled) return;
+        downloading = true;
+        showFeedback('', false);
+        renderControls();
+        try {
+          var response = await fetch('/api/export', { cache: 'no-store' });
+          if (!response.ok) throw new Error(await responseError(response));
+          var blob = await response.blob();
+          var objectUrl = URL.createObjectURL(blob);
+          var link = document.createElement('a');
+          link.href = objectUrl;
+          link.download = exportFilename(response);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.setTimeout(function () { URL.revokeObjectURL(objectUrl); }, 60000);
+          showFeedback('Excel download started.', false);
+        } catch (error) {
+          showFeedback(errorMessage(error), true);
+        } finally {
+          downloading = false;
+          renderControls();
+        }
+      });
+
+      poll();
+    }());
+  </script>
+</body>
+</html>
